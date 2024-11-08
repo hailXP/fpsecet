@@ -2,8 +2,12 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import chess
 import chess.engine
+import logging
 
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 app = Flask(__name__)
+
 CORS(app)
 
 ENGINE_PATH = "stockfish.exe"
