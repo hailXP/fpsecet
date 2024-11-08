@@ -9,7 +9,7 @@ CORS(app)
 ENGINE_PATH = "Patricia.exe"
 engine = chess.engine.SimpleEngine.popen_uci(ENGINE_PATH)
 
-depth = 8
+depth = 9
 multipv = 3
 limit = chess.engine.Limit(depth=depth)
 
@@ -44,28 +44,50 @@ def lich():
     move_list = []
     eval_list = []
 
-    if not move_list:
-        board = chess.Board(fen)
-        result = engine.analyse(board=board, limit=limit, multipv=multipv)
+    board = chess.Board(fen)
+    result = engine.analyse(board=board, limit=limit, multipv=multipv)
 
-        eval_list = []
-        move_list = []
-        for res in result:
-            if res['score'].is_mate():
-                eval_list.append(f"M{res['score'].white().mate()}")
+    for res in result:
+        if res['score'].is_mate():
+            mate_score = res['score'].white().mate()
+            eval_list.append(f"M{mate_score}")
+        else:
+            eval_score = res['score'].white().score() / 100.0
+            eval_list.append(round(eval_score, 2))
+        move_list.append(res['pv'][0].uci())
+
+    side_to_move = fen.split()[1]
+
+    entries = list(zip(eval_list, move_list))
+
+    def eval_to_sort_value(eval_str, side_to_move):
+        if isinstance(eval_str, str) and eval_str.startswith('M'):
+            mate_in = int(eval_str[1:])
+            if side_to_move == 'w':
+                return -float('inf') + mate_in if mate_in > 0 else float('inf') + mate_in
             else:
-                eval_list.append(round(res['score'].white().score()/100, 2))
-            move_list.append(res['pv'][0].uci())
+                return -float('inf') - mate_in if mate_in < 0 else float('inf') - mate_in
+        else:
+            return eval_str
 
-    for i in range(len(eval_list)):
-        if abs(eval_list[i]) > 100:
-            eval_list.pop(i)
-            move_list.pop(i)
-            break
+    entries.sort(key=lambda x: eval_to_sort_value(x[0], side_to_move), reverse=(side_to_move == 'w'))
+
+    eval_list_sorted = [x[0] for x in entries]
+    move_list_sorted = [x[1] for x in entries]
+
+    filtered_evals = []
+    filtered_moves = []
+    for eval_val, move in zip(eval_list_sorted, move_list_sorted):
+        if isinstance(eval_val, str) and eval_val.startswith('M'):
+            filtered_evals.append(eval_val)
+            filtered_moves.append(move)
+        elif abs(eval_val) <= 100:
+            filtered_evals.append(eval_val)
+            filtered_moves.append(move)
 
     return_data = {
-        'bestMoves': move_list,
-        'evals': eval_list,
+        'bestMoves': filtered_moves,
+        'evals': filtered_evals,
     }
 
     return jsonify(return_data)
