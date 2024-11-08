@@ -15,6 +15,7 @@ limit = chess.engine.Limit(depth=depth)
 
 def update_engine_config(depth, pv):
     global limit, multipv
+
     limit = chess.engine.Limit(depth=depth)
     multipv = pv
 
@@ -37,31 +38,24 @@ def configure():
 def lich():
     data = request.json
     fen = data.get('fen')
-    player_color = data.get('color', 'white').lower()
     if not fen:
         return jsonify({'error': 'No FEN provided'}), 400
 
-    board = chess.Board(fen)
-    result = engine.analyse(board=board, limit=limit, multipv=multipv)
+    move_list = []
+    eval_list = []
 
-    moves_evaluations = []
+    if not move_list:
+        board = chess.Board(fen)
+        result = engine.analyse(board=board, limit=limit, multipv=multipv)
 
-    for res in result:
-        if res['score'].is_mate():
-            mate_in = res['score'].white().mate() if player_color == 'white' else res['score'].black().mate()
-            eval_score = f"M{mate_in}"
-            score_value = -abs(mate_in)
-        else:
-            eval_score = round(res['score'].white().score() / 100, 2) if player_color == 'white' else round(res['score'].black().score() / 100, 2)
-            score_value = eval_score
-
-        move_uci = res['pv'][0].uci()
-        moves_evaluations.append((move_uci, eval_score, score_value))
-
-    moves_evaluations.sort(key=lambda x: (x[2] < 0, x[2] if player_color == 'white' else -x[2]))
-
-    move_list = [move[0] for move in moves_evaluations]
-    eval_list = [move[1] for move in moves_evaluations]
+        eval_list = []
+        move_list = []
+        for res in result:
+            if res['score'].is_mate():
+                eval_list.append(f"M{res['score'].white().mate()}")
+            else:
+                eval_list.append(round(res['score'].white().score()/100, 2))
+            move_list.append(res['pv'][0].uci())
 
     return_data = {
         'bestMoves': move_list,
