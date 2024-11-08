@@ -8,10 +8,31 @@ CORS(app)
 
 ENGINE_PATH = "Patricia.exe"
 engine = chess.engine.SimpleEngine.popen_uci(ENGINE_PATH)
-engine.configure({"Threads": 6})
 
+depth = 8
+multipv = 3
+limit = chess.engine.Limit(depth=depth)
 
-limit = chess.engine.Limit(depth=12)
+def update_engine_config(depth, pv):
+    global limit, multipv
+
+    limit = chess.engine.Limit(depth=depth)
+    multipv = pv
+
+@app.route('/configure', methods=['POST'])
+def configure():
+    data = request.json
+    new_depth = data.get('depth')
+    new_multipv = data.get('multipv')
+
+    if new_depth is not None:
+        depth = int(new_depth)
+    if new_multipv is not None:
+        multipv = int(new_multipv)
+
+    update_engine_config(depth, multipv)
+
+    return jsonify({'message': 'Configuration updated successfully', 'depth': depth, 'multipv': multipv}), 200
 
 @app.route('/lich', methods=['POST'])
 def lich():
@@ -19,25 +40,13 @@ def lich():
     fen = data.get('fen')
     if not fen:
         return jsonify({'error': 'No FEN provided'}), 400
-    
-    # params = {
-    #     'variant': 'standard',
-    #     'fen': fen,
-    #     'speeds': 'bullet,blitz,rapid,classical,correspondence',
-    #     'ratings': '1000,1200,1400,1600,1800,2000,2200,2500',
-    #     'source': 'analysis',
-    # }
-    
-    # response = requests.get('https://explorer.lichess.ovh/lichess', params=params)
-    
+
     move_list = []
     eval_list = []
 
-    # moves = response.json().get('moves')
-    # move_list = [move['uci'] for move in moves]
     if not move_list:
         board = chess.Board(fen)
-        result = engine.analyse(board=board, limit=limit, multipv=3)
+        result = engine.analyse(board=board, limit=limit, multipv=multipv)
 
         eval_list = []
         move_list = []
@@ -52,7 +61,7 @@ def lich():
         'bestMoves': move_list,
         'evals': eval_list,
     }
-    
+
     return jsonify(return_data)
 
 @app.route('/')

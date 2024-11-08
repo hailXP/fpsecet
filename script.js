@@ -1,10 +1,18 @@
+// ==UserScript==
+// @name        Chess AI
+// @match       https://www.chess.com/*
+// @version     1.2
+// @author      Hail
+// ==/UserScript==
 
 (() => {
     let prevState = "";
     let observer = null;
 
+    const SERVER_URL = "http://localhost:5000";
+
     async function fetchBestMove(fen) {
-        const response = await fetch("http://localhost:5000/lich", {
+        const response = await fetch(`${SERVER_URL}/lich`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ fen: fen })
@@ -106,6 +114,61 @@
         button.style.background = color;
     }
 
+    async function configureEngine() {
+        const depthInput = document.getElementById("depth-input").value;
+        const multipvInput = document.getElementById("multipv-input").value;
+
+        const data = {};
+        if (depthInput) data.depth = parseInt(depthInput);
+        if (multipvInput) data.multipv = parseInt(multipvInput);
+
+        try {
+            const response = await fetch(`${SERVER_URL}/configure`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+
+            const result = await response.json();
+            showToast(`Configuration updated: Depth = ${result.depth}, MultiPV = ${result.multipv}`);
+        } catch (error) {
+            showToast(`Error updating configuration: ${error.message}`);
+            console.error(error);
+        }
+    }
+
+    function showToast(message) {
+        const toast = document.createElement("div");
+        toast.textContent = message;
+        toast.style = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 5px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        `;
+        document.body.appendChild(toast);
+
+        void toast.offsetWidth;
+        toast.style.opacity = 1;
+
+        setTimeout(() => {
+            toast.style.opacity = 0;
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 500);
+        }, 3000);
+    }
+
     function setupUI() {
         document.addEventListener('keydown', function(event) {
             if (event.key === 'q') {
@@ -115,12 +178,12 @@
             }
         });
 
-        const buttonContainer = document.createElement("div");
-        buttonContainer.style = "position: fixed; top: 10px; left: 20%; display: flex; align-items: flex-start;";
+        const leftContainer = document.createElement("div");
+        leftContainer.style = "position: fixed; top: 10px; left: 20px; display: flex; align-items: center;";
 
         const evalsContainer = document.createElement("div");
         evalsContainer.id = "evals-container";
-        evalsContainer.style = "display: flex; flex-direction: row; margin-right: 10px; margin-top: 0; background-color: rgba(0, 0, 0, 0.5); border-radius: 5px; padding: 5px;";
+        evalsContainer.style = "display: flex; flex-direction: row; margin-right: 10px; background-color: rgba(0, 0, 0, 0.5); border-radius: 5px; padding: 5px;";
 
         const observerButton = document.createElement("button");
         observerButton.id = "observer-toggle-button";
@@ -134,10 +197,101 @@
         manualButton.onclick = manualTrigger;
         manualButton.style = "margin: 0 5px; padding: 8px 16px; background: #008CBA; color: white; border: none; border-radius: 5px; cursor: pointer;";
 
-        buttonContainer.appendChild(evalsContainer);
-        buttonContainer.appendChild(observerButton);
-        buttonContainer.appendChild(manualButton);
-        document.body.appendChild(buttonContainer);
+        leftContainer.appendChild(evalsContainer);
+        leftContainer.appendChild(observerButton);
+        leftContainer.appendChild(manualButton);
+        document.body.appendChild(leftContainer);
+
+        const rightContainer = document.createElement("div");
+        rightContainer.style = "position: fixed; top: 10px; right: 20px; display: flex; flex-direction: column; align-items: flex-end;";
+
+        const configContainer = document.createElement("div");
+        configContainer.style = "display: flex; align-items: center; margin-bottom: 10px; background-color: rgba(0, 0, 0, 0.5); border-radius: 5px; padding: 5px;";
+
+        const depthLabel = document.createElement("label");
+        depthLabel.textContent = "Depth:";
+        depthLabel.style = "color: white; margin-right: 5px;";
+        const depthInput = document.createElement("input");
+        depthInput.id = "depth-input";
+        depthInput.value = 8;
+        depthInput.type = "number";
+        depthInput.min = "1";
+        depthInput.style = "width: 50px; margin-right: 10px;";
+
+        const multipvLabel = document.createElement("label");
+        multipvLabel.textContent = "MultiPV:";
+        multipvLabel.style = "color: white; margin-right: 5px;";
+        const multipvInput = document.createElement("input");
+        multipvInput.value = 3;
+        multipvInput.id = "multipv-input";
+        multipvInput.type = "number";
+        multipvInput.min = "1";
+        multipvInput.style = "width: 50px; margin-right: 10px;";
+
+        const configButton = document.createElement("button");
+        configButton.textContent = "Configure";
+        configButton.onclick = configureEngine;
+        configButton.style = "margin: 0 5px; padding: 8px 16px; background: #FF9800; color: white; border: none; border-radius: 5px; cursor: pointer;";
+
+        configContainer.appendChild(depthLabel);
+        configContainer.appendChild(depthInput);
+        configContainer.appendChild(multipvLabel);
+        configContainer.appendChild(multipvInput);
+        configContainer.appendChild(configButton);
+
+        const fenPgnContainer = document.createElement("div");
+        fenPgnContainer.style = "display: flex; flex-direction: column; align-items: flex-end;";
+
+        const fenButton = document.createElement("button");
+        fenButton.textContent = "Get FEN";
+        fenButton.style = "margin: 5px 0; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;";
+
+        const fenTextbox = document.createElement("input");
+        fenTextbox.type = "text";
+        fenTextbox.readOnly = true;
+        fenTextbox.style = "margin: 5px 0; width: 300px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;";
+
+        const pgnButton = document.createElement("button");
+        pgnButton.textContent = "Get PGN";
+        pgnButton.style = "margin: 5px 0; padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;";
+
+        const pgnTextbox = document.createElement("input");
+        pgnTextbox.type = "text";
+        pgnTextbox.readOnly = true;
+        pgnTextbox.style = "margin: 5px 0; width: 300px; padding: 8px; border: 1px solid #ccc; border-radius: 5px;";
+
+        fenPgnContainer.appendChild(fenButton);
+        fenPgnContainer.appendChild(fenTextbox);
+        fenPgnContainer.appendChild(pgnButton);
+        fenPgnContainer.appendChild(pgnTextbox);
+
+        fenButton.onclick = function() {
+            const boardElement = document.querySelector("wc-chess-board");
+            if (!boardElement || !boardElement.game) {
+                alert("Board not found");
+                return;
+            }
+
+            const board = boardElement.game;
+            const fen = board.getFEN();
+            fenTextbox.value = fen;
+        };
+
+        pgnButton.onclick = function() {
+            const boardElement = document.querySelector("wc-chess-board");
+            if (!boardElement || !boardElement.game) {
+                alert("Board not found");
+                return;
+            }
+
+            const board = boardElement.game;
+            const pgn = board.getPGN();
+            pgnTextbox.value = pgn;
+        };
+
+        rightContainer.appendChild(configContainer);
+        rightContainer.appendChild(fenPgnContainer);
+        document.body.appendChild(rightContainer);
     }
 
     setupUI();
