@@ -57,6 +57,12 @@ def lich():
                 eval_list.append(round(res['score'].white().score()/100, 2))
             move_list.append(res['pv'][0].uci())
 
+    for i in range(len(eval_list)):
+        if abs(eval_list[i]) > 100:
+            eval_list.pop(i)
+            move_list.pop(i)
+            break
+
     return_data = {
         'bestMoves': move_list,
         'evals': eval_list,
