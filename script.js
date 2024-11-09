@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Chess AI
 // @match       https://www.chess.com/*
-// @version     1.5
+// @version     1.6
 // @author      Hail
 // ==/UserScript==
 
@@ -74,6 +74,9 @@
                 persistent: false,
                 type: "arrow"
             });
+            if (i > 2) {
+                arrows[i].color = "red";
+            }
         }
         board.markings.addMany(arrows);
     }
