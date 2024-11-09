@@ -17,17 +17,21 @@ depth = 12
 multipv = 3
 limit = chess.engine.Limit(depth=depth)
 
-def update_engine_config(depth=depth, pv=multipv):
-    global limit, multipv
+def update_engine_config(dep, pv):
+    global depth, limit, multipv
 
     limit = chess.engine.Limit(depth=depth)
     multipv = pv
+    depth = dep
 
 @app.route('/configure', methods=['POST'])
 def configure():
+    global depth
+    global multipv
+    
     data = request.json
-    new_depth = data.get('depth')
-    new_multipv = data.get('multipv')
+    new_depth = data.get('depth', depth)
+    new_multipv = data.get('multipv', multipv)
 
     if new_depth is not None:
         depth = int(new_depth)

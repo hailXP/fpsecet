@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Chess AI
 // @match       https://www.chess.com/*
-// @version     1.2
+// @version     1.5
 // @author      Hail
 // ==/UserScript==
 
@@ -82,13 +82,13 @@
         const evalsContainer = document.getElementById("evals-container");
         evalsContainer.innerHTML = "";
 
-        evals.forEach(eval => {
+        evals.forEach(evalValue => {
             const evalItem = document.createElement("div");
-            evalItem.textContent = eval;
+            evalItem.textContent = evalValue;
             evalItem.style.marginRight = "10px";
             evalItem.style.fontSize = "18px";
             evalItem.style.fontWeight = "bold";
-            evalItem.style.color = String(eval).includes('-') ? "magenta" : "white";
+            evalItem.style.color = String(evalValue).includes('-') ? "magenta" : "white";
             evalsContainer.appendChild(evalItem);
         });
     }
@@ -178,12 +178,22 @@
             }
         });
 
-        const leftContainer = document.createElement("div");
-        leftContainer.style = "position: fixed; top: 10px; left: 20px; display: flex; align-items: center;";
+        const centerContainer = document.createElement("div");
+        centerContainer.style = `
+            position: fixed;
+            top: 10px;
+            left: 25%;
+            transform: translateX(-25%);
+            display: flex;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 10px;
+        `;
 
         const evalsContainer = document.createElement("div");
         evalsContainer.id = "evals-container";
-        evalsContainer.style = "display: flex; flex-direction: row; margin-right: 10px; background-color: rgba(0, 0, 0, 0.5); border-radius: 5px; padding: 5px;";
+        evalsContainer.style = "display: flex; flex-direction: row; margin-right: 10px;";
 
         const observerButton = document.createElement("button");
         observerButton.id = "observer-toggle-button";
@@ -197,23 +207,29 @@
         manualButton.onclick = manualTrigger;
         manualButton.style = "margin: 0 5px; padding: 8px 16px; background: #008CBA; color: white; border: none; border-radius: 5px; cursor: pointer;";
 
-        leftContainer.appendChild(evalsContainer);
-        leftContainer.appendChild(observerButton);
-        leftContainer.appendChild(manualButton);
-        document.body.appendChild(leftContainer);
+        centerContainer.appendChild(evalsContainer);
+        centerContainer.appendChild(observerButton);
+        centerContainer.appendChild(manualButton);
+        document.body.appendChild(centerContainer);
 
         const rightContainer = document.createElement("div");
         rightContainer.style = "position: fixed; top: 10px; right: 20px; display: flex; flex-direction: column; align-items: flex-end;";
 
         const configContainer = document.createElement("div");
-        configContainer.style = "display: flex; align-items: center; margin-bottom: 10px; background-color: rgba(0, 0, 0, 0.5); border-radius: 5px; padding: 5px;";
+        configContainer.style = `
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 5px;
+        `;
 
         const depthLabel = document.createElement("label");
         depthLabel.textContent = "Depth:";
         depthLabel.style = "color: white; margin-right: 5px;";
         const depthInput = document.createElement("input");
         depthInput.id = "depth-input";
-        depthInput.value = 8;
         depthInput.type = "number";
         depthInput.min = "1";
         depthInput.style = "width: 50px; margin-right: 10px;";
@@ -222,7 +238,6 @@
         multipvLabel.textContent = "MultiPV:";
         multipvLabel.style = "color: white; margin-right: 5px;";
         const multipvInput = document.createElement("input");
-        multipvInput.value = 3;
         multipvInput.id = "multipv-input";
         multipvInput.type = "number";
         multipvInput.min = "1";
