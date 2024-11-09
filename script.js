@@ -75,7 +75,7 @@
                 type: "arrow"
             });
             if (i > 2) {
-                arrows[i].color = "red";
+                arrows[i].data.color = "red";
             }
         }
         board.markings.addMany(arrows);
